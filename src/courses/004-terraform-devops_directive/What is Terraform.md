@@ -344,17 +344,85 @@ Bootstrapping process will enable us to provision those resources and then impor
 
 # 04: Variables and Outputs
 
+We can make our previous codes much more modular with using variables and outputs which they are features of HCL language. 
+
 ## 4.1 Variables Types
 
-* Input Variables
+* **Input Variables**
+  
   * var.\<name\>
-  * You can think of input variables input parameters or arguments for a function.
-* Local Variables
+  * You can think of input variables **input parameters** or **arguments** for a function.
+* **Local Variables**
+  
   * local.\<name\>
   * When we declare them we use `locals` plural.
   * These are like temporary variables within the scope of a function.
-  * These just allow me to take a value which is repeated a few times throughout my configuration and pull it into  variable that can be reused, so i might say this service name is `x` or I am the owner of these resources.
-* Output Variables
-  * These are the return value of the function
-  * These are what allow us to take multiple Terraform configurations and bundle them together 
+  * These just allow me to take a value which is repeated a few times throughout my configuration and pull it into  variable that can be reused, so I might say this service name is `x` or I am the owner of these resources.
+* **Output Variables**
+  
+  * These are the **return value** of the function
+  * These are what allow us to take multiple Terraform configurations and bundle them together
+  
+    So, as an example I might take the output of my apply and return a instance IP address, and using it to set up a firewall rule. 
+
+```terraform
+variable "instance_type" {
+    description	= "ec2 instance type"
+    type        = string
+    default	    = "t2.micro"
+    }
+
+locals {
+    service_name = "My Service"
+    owner        = "DevOps Directive"
+    }
+
+output "instance_ip_addr" {
+    value = aws_instance.instance.public_ip
+    }
+```
+
+## 4.2  Setting Input Variables
+
+> :warning:**(In order of precedence // lowest :arrow_right: highest)**: First on the list is the lowest precedence and the final on the list is the highest, so if you've declared a variable in multiple ways this is the ordering in which one will be applied over the other.
+
+* **Manual entry during plan/apply:** If you don't specify a variable anywhere and there's no default value, when you run the `terrafrom plan` command, the Terraform CLI will  prompt you and ask you to put a value in. You generally don't want to be doing it that way because then it makes it very easy to make a typo or have a mistake such that the variables change throughout different runs.
+* **Default value in declaration block:** Kind of fallback what it will use if you don't specify value.
+* **`TF_VAR_\<name\>` environment variables:** Start with the prefix of `TF_VAR_`. This is sometimes useful in CI (Continues Integration) environments or other environments where you would want to change the value based on different attributes 
+* **`terraform.tfvars` file:** You can have different `tfvars` files like for staging and production.
+* **`*.auto.tfvars` file: ** This can be auto applied and these will actually be used **over top of** whatever you have in your  `tfvars` files and then finally :arrow_down_small: 
+* **Command line `-var` or `-var-file` **when you issue your `terraform plan` command or `terraform apply` command you can have a  `-var` or `-var-file` option that will pass those in at runtime. So that is the highest precedent so if I specify a `-var` on my `terraform apply` command that one is going to be set to that value even if I have defined it in one of these other ways
+
+## 4.3 Types & Validation
+
+### 4.3.1 Primitive Types 
+
+* String
+* Number
+* Bool
+
+### 4.3.2 Complex Types
+
+* list(\<TYPE\>)
+* set(\<TYPE\>)
+* map(\<TYPE\>)
+* object({\<ATTR NAMR\>=\<TYPE\>,...})
+* tuple([\<TYPE\>,...])
+
+### 4.3.3 Validation
+
+* **Type checking happens automatically**: When you specify a wrong type or pass wrong value type to a variable, Terraform will through an error when you try to use that command.
+* **Custom conditions can also be enforced**: You can also write your own validation rules that can be applied(a powerful technique to avoid having issues or run some automated testing against codebase to do some static checks)
+
+## 4.4 Sensitive Data
+
+
+
+
+
+
+
+
+
+
 
