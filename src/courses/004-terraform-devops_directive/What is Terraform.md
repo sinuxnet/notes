@@ -416,7 +416,91 @@ output "instance_ip_addr" {
 
 ## 4.4 Sensitive Data
 
+**Make variables as sensitive:**
 
+* Sensitive = true
+
+**Pass to terraform apply with:**
+
+* TF_VAR_variable
+* `-var` (retrieved from secret manager at runtime)
+
+**Can also use external secret store:**
+
+* For example, AWS Secret Manager
+
+## 4.5 Examples
+
+Main.tf: 
+
+```terraform
+terraform {
+    backend "s3" {
+        bucket		    = "devops-directive-tf-state"
+        key		  	    = "04-variable-and-outputs/example/terraform.tfstate"
+        region			= "us-east-1"
+        dynamodb-table	 = "terraform-state-locking"
+        encrypt			= true 
+        }
+    required_providers {
+        aws = {
+            source  = "hashicorp/aws"
+            version = "~> 3.0"
+            }
+        }
+    }
+provider "aws" {
+    region = "us-east-1"
+    }
+locals {
+    extra_tag = "extra-tag"
+    }
+resource "aws_instance" "instance" {
+    ami           = var.ami
+    instance_type = var.instance_type
+    
+    tags = {
+        Name = var.instance_name
+        Extra_tag = local.extra_tag
+        }
+    }
+resource "aws_db_instance" "db_instance" {
+    allocated_storage   = 20
+    storage_type        = "gp2"
+    engine              = "postgres"
+    engine_version      = "12"
+    instance_class      = "db.t2.micro"
+    name                = "mydb"
+    username            = var.db_user
+    password            = var.db_password
+    skip_final_snapshot = true
+    }
+```
+
+local variables ~>  Things that are scoped to within this project and we can't actually pass them in at runtime
+
+variables.tf:
+
+```terraform
+variable "instance_name" {
+    description = "Name of ec2 instance"
+    type = string
+    }
+variable "ami" {
+    description = "Amazon machine image to use for ec2 instance"
+    type        = string
+    defualt     = "ami-0119004989bb873422" # Ubuntu 20.03 LTS // us-east-1
+    }
+variables "instance_type" {
+    
+    }
+variable "db_user" {
+    
+    }
+variable "db_pass" {
+    
+    }
+```
 
 
 
