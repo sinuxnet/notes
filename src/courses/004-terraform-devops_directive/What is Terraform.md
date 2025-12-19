@@ -1109,3 +1109,1168 @@ Example 1: Once you've finished your application of your Terraform config and yo
 
 Example 2: In a more simple example, we could have a startup script that we wanted to execute after we have provisioned our servers and that could be a file provisioner with a bash script stored there that Terraform configuration reference.
 
+# 06: Project Organization + Modules
+
+## 6.1 What is a Module?
+
+Modules are containers for multiple resources that are used together. A module consists of a collection of `.tf` and/or `.tf.json` files kept together in a directory.
+
+Modules are the main way to package and reuse resource configurations with Terraform. (Using across different projects or different environments or share the module if you think third parties might find them useful)
+
+## 6.2 Why Modules?
+
+You can't expect everyone to know everything, and in order to make something like team manageable we need to break down the system into different components. For example infrastructure team in company make abstraction of deployment of applications for application developers of company. 
+
+## 6.3 Types of Modules
+
+### 6.3.1Root Module
+
+Default module containing all `.tf` files in main working directory
+
+### 6.3.2 Child Module
+
+A separate external module referred to from a `.tf` file.
+
+## 6.4  Module Sources:
+
+* Local paths
+* Terraform Registry
+* GitHub
+* Bitbucket
+* Generic Git, Mercurial repositories
+* HTTP URLs
+* S3 buckets
+* GCS buckets
+
+### 6.4.1 Local Path
+
+You would just use a relative path from your root module to wherever that child module lives.
+
+```terraform
+module "web-app" {
+    source = "../web-app"
+    }
+```
+
+### 6.4.2 Terraform Registry
+
+The source would be whatever organization then slash `/` and then the name of module, and you can pin a version.
+
+```terraform
+module "" {
+    source ="hashicorp/consul/aws"
+    version = "0.1.0"
+    }
+```
+
+### 6.4.3 Github
+
+```terraform
+# HTTPS
+module "example" {
+    source ="github.com/hashicorp/example?ref=v1.3.1" # can refrence specific version
+    }
+    
+module "example" {
+    source ="git@github.com:hasicorp/example.git"
+    }
+```
+
+### 6.4.4 Generic Git Repository 
+
+```terraform
+module "example" {
+    source ="git::ssh//username@example.com/storage.git"
+    }
+```
+
+## 6.5 Inputs + Meta-Arguments
+
+* Input variables are passed in via module block
+
+**Meta-Arguments:**
+
+* count
+* for_each
+* providers
+* depends_on
+
+```terraform
+module "web-app" {
+    source ="../web-app-module"
+    
+    # Input Variables
+    bucket_name = "devops-directive-web-app-data"
+    domain      = "mysuperawesomesite.com"
+    db_name     = "mydb"
+    db_user     = "foo"
+    db_pass     = var.db_pass
+    }
+```
+
+## 6.6 What Makes a Good Module?
+
+* Raises the abstraction level from base resource types
+* Groups resources in a logical fashion
+* Exposes input variable to allow necessary customization + composition
+* Provides useful defaults (makes onboarding experience much nicer)
+* Provides useful defaults Returns outputs to make further integrations possible
+
+## 6.7 Terraform Registry
+
+You can use Terraform Registry as starting point.
+
+<img src="./images/terraform_registry.png" style="zoom:60%;" />
+
+## 6.8 Consuming a 3rd-party Module
+
+### 6.8.1 Example 1: Consul
+
+We will deploy Consul with  [AWS Consul Module](https://registry.terraform.io/modules/hashicorp/consul/aws/latest) from Terraform registry. We can take advantage of them, configuring the system with a lot of the best practices and exposing the input variables to us. They abstracted away a lot of the complexity that would be required to run Consul.
+
+> main.tf
+
+```terraform
+terraform {
+    # Assume s3 bucket and dynamo DB table already set up
+    backend "s3" {
+        bucket         = "devops-directive-tf-state"
+        key            = "06-organization-and-modules/consul/terraform.tfstate"
+        region         = "us-esat-1"
+        dynamodb_table = "terraform-state-locking"
+        encrypt        = "true"
+        }
+    required_providers {
+        aws = {
+            source = "hashicorp/aws"
+            version = "~> 3.0"
+            }
+        }
+    }
+
+provider "aws" {
+    region = "us-east-1"
+    }
+
+module "consul"{
+    source = "git@github.com:hashicorp/terraform-aws-consul.git"
+    }
+```
+
+After that you must run `terraform init` and then `terraform plan` then you will see this actually provision 52 different resources within our AWS account, things ranging from ec2 instances to networking policies to IAM roles. 
+
+### 6.8.2 Example 2: Web-app
+
+> the project tree:
+>
+> .
+> ├── web-app
+> ├── web-app-module
+
+> web-app/main.tf
+
+```terraform
+terraform {
+  # Assumes s3 bucket and dynamo DB table already set up
+  backend "s3" {
+    bucket         = "devops-directive-tf-state"
+    key            = "06-organization-and-modules/web-app/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
+    encrypt        = true
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+variable "db_pass_1" {
+  description = "password for database #1"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_pass_2" {
+  description = "password for database #2"
+  type        = string
+  sensitive   = true
+}
+
+module "web_app_1" {
+  source = "../web-app-module"
+
+  # Input Variables
+  bucket_prefix    = "web-app-1-data"
+  domain           = "devopsdeployed.com"
+  app_name         = "web-app-1"
+  environment_name = "production"
+  instance_type    = "t2.micro"
+  create_dns_zone  = true
+  db_name          = "webapp1db"
+  db_user          = "foo"
+  db_pass          = var.db_pass_1
+}
+
+module "web_app_2" {
+  source = "../web-app-module"
+
+  # Input Variables
+  bucket_prefix    = "web-app-2-data"
+  domain           = "anotherdevopsdeployed.com"
+  app_name         = "web-app-2"
+  environment_name = "production"
+  instance_type    = "t2.micro"
+  create_dns_zone  = true
+  db_name          = "webapp2db"
+  db_user          = "bar"
+  db_pass          = var.db_pass_2
+}
+```
+
+>  our module tree:
+>
+> .
+> ├── compute.tf
+> ├── database.tf
+> ├── dns.tf
+> ├── main.tf
+> ├── networking.tf
+> ├── outputs.tf
+> ├── storage.tf
+> └── variables.tf
+>
+> 1 directory, 8 files
+
+> main.tf
+
+```terraform
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+```
+
+> outputs.tf
+
+```terraform
+output "instance_1_ip_addr" {
+  value = aws_instance.instance_1.public_ip
+}
+
+output "instance_2_ip_addr" {
+  value = aws_instance.instance_2.public_ip
+}
+
+output "db_instance_addr" {
+  value = aws_db_instance.db_instance.address
+}
+```
+
+> variables.tf
+
+```terraform
+# General Variables
+
+variable "region" {
+  description = "Default region for provider"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "app_name" {
+  description = "Name of the web application"
+  type        = string
+  default     = "web-app"
+}
+
+variable "environment_name" {
+  description = "Deployment environment (dev/staging/production)"
+  type        = string
+  default     = "dev"
+}
+
+# EC2 Variables
+
+variable "ami" {
+  description = "Amazon machine image to use for ec2 instance"
+  type        = string
+  default     = "ami-011899242bb902164" # Ubuntu 20.04 LTS // us-east-1
+}
+
+variable "instance_type" {
+  description = "ec2 instance type"
+  type        = string
+  default     = "t2.micro"
+}
+
+# S3 Variables
+
+variable "bucket_prefix" {
+  description = "prefix of s3 bucket for app data"
+  type        = string
+}
+
+# Route 53 Variables
+
+variable "create_dns_zone" {
+  description = "If true, create new route53 zone, if false read existing route53 zone"
+  type        = bool
+  default     = false
+}
+
+variable "domain" {
+  description = "Domain for website"
+  type        = string
+}
+
+# RDS Variables
+
+variable "db_name" {
+  description = "Name of DB"
+  type        = string
+}
+
+variable "db_user" {
+  description = "Username for DB"
+  type        = string
+}
+
+variable "db_pass" {
+  description = "Password for DB"
+  type        = string
+  sensitive   = true
+}
+
+
+```
+
+> compute.tf
+
+```terraform
+resource "aws_instance" "instance_1" {
+  ami             = var.ami
+  instance_type   = var.instance_type
+  security_groups = [aws_security_group.instances.name]
+  user_data       = <<-EOF 
+              #!/bin/bash
+              echo "Hello, World 1" > index.html
+              python3 -m http.server 8080 &
+              EOF
+}
+
+resource "aws_instance" "instance_2" {
+  ami             = var.ami
+  instance_type   = var.instance_type
+  security_groups = [aws_security_group.instances.name]
+  user_data       = <<-EOF 
+              #!/bin/bash
+              echo "Hello, World 2" > index.html
+              python3 -m http.server 8080 &
+              EOF
+
+```
+
+> database.tf
+
+```terraform
+resource "aws_db_instance" "db_instance" {
+  allocated_storage   = 20
+  storage_type        = "standard"
+  engine              = "postgres"
+  engine_version      = "12"
+  instance_class      = "db.t2.micro"
+  name                = var.db_name
+  username            = var.db_user
+  password            = var.db_pass
+  skip_final_snapshot = true
+}
+```
+
+> dns.tf
+
+```terraform
+resource "aws_route53_zone" "primary" {
+  count = var.create_dns_zone ? 1 : 0
+  name  = var.domain
+}
+
+data "aws_route53_zone" "primary" {
+  count = var.create_dns_zone ? 0 : 1
+  name  = var.domain
+}
+
+locals {
+  dns_zone_id = var.create_dns_zone ? aws_route53_zone.primary[0].zone_id : data.aws_route53_zone.primary[0].zone_id
+  subdomain   = var.environment_name == "production" ? "" : "${var.environment_name}."
+}
+
+resource "aws_route53_record" "root" {
+  zone_id = local.dns_zone_id
+  name    = "${local.subdomain}${var.domain}"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.load_balancer.dns_name
+    zone_id                = aws_lb.load_balancer.zone_id
+    evaluate_target_health = true
+  }
+}
+```
+
+> networking.tf
+
+```terraform
+data "aws_vpc" "default_vpc" {
+  default = true
+}
+
+data "aws_subnet_ids" "default_subnet" {
+  vpc_id = data.aws_vpc.default_vpc.id
+}
+
+resource "aws_security_group" "instances" {
+  name = "${var.app_name}-${var.environment_name}-instance-security-group"
+}
+
+resource "aws_security_group_rule" "allow_http_inbound" {
+  type              = "ingress"
+  security_group_id = aws_security_group.instances.id
+
+  from_port   = 8080
+  to_port     = 8080
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.load_balancer.arn
+
+  port = 80
+
+  protocol = "HTTP"
+
+  # By default, return a simple 404 page
+  default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "404: page not found"
+      status_code  = 404
+    }
+  }
+}
+
+resource "aws_lb_target_group" "instances" {
+  name     = "${var.app_name}-${var.environment_name}-tg"
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = data.aws_vpc.default_vpc.id
+
+  health_check {
+    path                = "/"
+    protocol            = "HTTP"
+    matcher             = "200"
+    interval            = 15
+    timeout             = 3
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_target_group_attachment" "instance_1" {
+  target_group_arn = aws_lb_target_group.instances.arn
+  target_id        = aws_instance.instance_1.id
+  port             = 8080
+}
+
+resource "aws_lb_target_group_attachment" "instance_2" {
+  target_group_arn = aws_lb_target_group.instances.arn
+  target_id        = aws_instance.instance_2.id
+  port             = 8080
+}
+
+resource "aws_lb_listener_rule" "instances" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 100
+
+  condition {
+    path_pattern {
+      values = ["*"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.instances.arn
+  }
+}
+
+
+resource "aws_security_group" "alb" {
+  name = "${var.app_name}-${var.environment_name}-alb-security-group"
+}
+
+resource "aws_security_group_rule" "allow_alb_http_inbound" {
+  type              = "ingress"
+  security_group_id = aws_security_group.alb.id
+
+  from_port   = 80
+  to_port     = 80
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+
+}
+
+resource "aws_security_group_rule" "allow_alb_all_outbound" {
+  type              = "egress"
+  security_group_id = aws_security_group.alb.id
+
+  from_port   = 0
+  to_port     = 0
+  protocol    = "-1"
+  cidr_blocks = ["0.0.0.0/0"]
+
+}
+
+
+resource "aws_lb" "load_balancer" {
+  name               = "${var.app_name}-${var.environment_name}-web-app-lb"
+  load_balancer_type = "application"
+  subnets            = data.aws_subnet_ids.default_subnet.ids
+  security_groups    = [aws_security_group.alb.id]
+
+}
+```
+
+Hopefully that gives you an idea of now how we can breaking up our terraform code into relevant section, so it's:
+
+* Easier to follow and easier to read. 
+* Parametrizing it with variables so that we can pass in key information to differentiate between different environments.
+* Abstract a lot of complexity within that module, so as a consumer of the module we just pick the key values that we want pass those in.
+* We can provision one or more copies of that module very easily.
+
+# 07: Managing Multiple Environments
+
+<img src="./images/multiple_environments.png" style="zoom:60%;" />
+
+We want to take our single config or module and deploy it multiple times and there's two main approaches:
+
+## 7.1 Two Main Approaches
+
+### 7.1.1 Workspaces
+
+Multiple named sections within a single backend
+
+```shell
+$ terrafrom workspace new dev
+Created and switched to workspace "dev"!
+
+Youre now on a new, empty workspace. Workspaces isolate their state, so if you run "terraform plan" Terraform will not see any existing state for this configuration.
+
+$ terraform workspace list 
+default
+* dev
+production
+staging
+```
+
+#### 7.1.1.1 Pros
+
+* Easy to get started
+* Convenient `terraform.workspace` expression
+* Minimizes Code Duplication
+
+#### 7.1.1.2 Cons
+
+* Prone to human error (If you're manually interacting, it can be dangerous, automated: less danger! )
+* State stored within same backend (problem: isolation of different environments state files)
+* Codebase doesn't unambiguously show deployment configuration
+
+### 7.1.2 File Structure
+
+Directory layout provides separation, modules provide reuse
+
+```shell
+$ tree
+.
+├── _modules
+│   ├── module-1
+|   |   ├── main.tf
+|   |   └── variables.tf
+│   └── module-2
+|       ├── main.tf
+|       └── variables.tf
+├── dev
+|	├── main.tf
+|	└── terraform.tfvars
+├── production
+|	├── main.tf
+|	└── terraform.tfvars
+└── staging
+	├── main.tf
+	└── terraform.tfvars
+
+6 directories, 10 files
+
+```
+
+#### 7.1.2.1 Pros
+
+* Isolation of backends
+  * Improved Security
+  * Decreased potential for human error
+* Codebase fully represents deployed state
+
+#### 7.1.2.2 Cons
+
+* Multiple `terraform apply` required to provision environments
+* More code duplication, but can be minimized with modules
+
+## 7.2 File Structure (environments + components)
+
+```shell
+.
+├── _modules
+│   ├── compute-module
+|   |   ├── main.tf
+|   |   └── variables.tf
+│   └── networking-module
+|       ├── main.tf
+|       └── variables.tf
+├── dev
+│   ├── compute
+|   |   ├── main.tf
+|   |   └── terraform.tfvars
+│   └── networking
+|       ├── main.tf
+|       └── terraform.tfvars
+├── production
+│   ├── compute
+|   |   ├── main.tf
+|   |   └── terraform.tfvars
+│   └── netwroking
+|       ├── main.tf
+|       └── terraform.tfvars
+└── staging
+    ├── compute
+    |   ├── main.tf
+    |   └── terraform.tfvars
+    ├── networking
+        ├── main.tf
+        └── terraform.tfvars
+
+```
+
+Depending how complex infrastructure is, we probably want to start separating things out into not just having a single Terraform config for all of our infrastructure.
+
+* Further separation (at logical component groups) useful for larger projects
+  * Isolate things that change frequently from those which don't
+* Referencing resources across configurations is possible using `terraform_remote_state`
+
+## 7.3 Terragrunt
+
+* Toll by gruntwork.io that provides utilities to make certain Terraform ;use cases easier
+  * Keeping Terraform code DRY
+  * Executing commands across multiple TF configs
+  * Working with multiple cloud accounts
+
+## 7.4 Examples
+
+### 7.4.1 Workspaces
+
+> main.tf
+
+```terraform
+terraform {
+  # Assumes s3 bucket and dynamo DB table already set up
+  backend "s3" {
+    bucket         = "devops-directive-tf-state"
+    key            = "07-managing-multiple-environments/workspaces/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
+    encrypt        = true
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+variable "db_pass" {
+  description = "password for database"
+  type        = string
+  sensitive   = true
+}
+
+locals {
+  environment_name = terraform.workspace
+}
+
+module "web_app" {
+  source = "../../06-organization-and-modules/web-app-module"
+
+  # Input Variables
+  bucket_prefix    = "web-app-data-${local.environment_name}"
+  domain           = "devopsdeployed.com"
+  environment_name = local.environment_name
+  instance_type    = "t2.micro"
+  create_dns_zone  = terraform.workspace == "production" ? true : false
+    # Because the DNS zone is going to be global across the two environments
+    # If i'm in production go ahead and provision that zone
+    # If i'm not in production don't use it
+    # In staging and development i'll use the DNS zone that already exists
+  db_name          = "${local.environment_name}mydb"
+  db_user          = "foo"
+  db_pass          = var.db_pass
+}
+```
+
+```bash
+terraform init
+terraform workspace list
+terraform workspace new production
+terraform workspace list
+terraform apply
+terraform workspace new staging
+terraform apply
+terraform destroy
+terraform workspace select production
+terraform destroy
+```
+
+### 7.4.2 File Structure
+
+> tree of project:
+>
+> .
+> ├── README.md
+> ├── global
+> │   └── main.tf
+> ├── production
+> │   └── main.tf
+> └── staging
+>     └── main.tf
+
+> global/main.tf
+
+```terraform
+terraform {
+  # Assumes s3 bucket and dynamo DB table already set up
+  backend "s3" {
+    bucket         = "devops-directive-tf-state"
+    key            = "07-managing-multiple-environments/global/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
+    encrypt        = true
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+# Route53 zone is shared across staging and production
+resource "aws_route53_zone" "primary" {
+  name = "devopsdeployed.com"
+}
+```
+
+> production/main.tf
+
+```terraform
+terraform {
+  # Assumes s3 bucket and dynamo DB table already set up
+  # See /code/03-basics/aws-backend
+  backend "s3" {
+    bucket         = "devops-directive-tf-state"
+    key            = "07-managing-multiple-environments/production/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
+    encrypt        = true
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+variable "db_pass" {
+  description = "password for database"
+  type        = string
+  sensitive   = true
+}
+
+locals {
+  environment_name = "production"
+}
+
+module "web_app" {
+  source = "../../../06-organization-and-modules/web-app-module"
+
+  # Input Variables
+  bucket_prefix    = "web-app-data-${local.environment_name}"
+  domain           = "devopsdeployed.com"
+  environment_name = local.environment_name
+  instance_type    = "t2.micro"
+  create_dns_zone  = false
+  db_name          = "${local.environment_name}mydb"
+  db_user          = "foo"
+  db_pass          = var.db_pass
+}
+```
+
+> staging/main.tf
+
+```terraform
+terraform {
+  # Assumes s3 bucket and dynamo DB table already set up
+  # See /code/03-basics/aws-backend
+  backend "s3" {
+    bucket         = "devops-directive-tf-state"
+    key            = "07-managing-multiple-environments/staging/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
+    encrypt        = true
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+variable "db_pass" {
+  description = "password for database"
+  type        = string
+  sensitive   = true
+}
+
+locals {
+  environment_name = "staging"
+}
+
+module "web_app" {
+  source = "../../../06-organization-and-modules/web-app-module"
+
+  # Input Variables
+  bucket_prefix    = "web-app-data-${local.environment_name}"
+  domain           = "devopsdeployed.com"
+  environment_name = local.environment_name
+  instance_type    = "t2.micro"
+  create_dns_zone  = false
+  db_name          = "${local.environment_name}mydb"
+  db_user          = "foo"
+  db_pass          = var.db_pass
+}
+```
+
+commands to run:
+
+```bash
+terraform init 
+terraform apply	# provisioning shared resources
+cd production
+terraform init
+terraform apply
+cd ../staging
+terraform init
+terraform apply
+```
+
+**Why would this approach be potentially beneficial over the workspaces approach?**
+
+1. I can very clearly look at my directory file structure. I could store my `.tfvars` files within there and very easily see what environments I have deployed and how my configuration maps onto those. With the workspaces approach all we have is that `main.tf` until we actually have Terraform installed and start issuing `terraform workspace list`, we won't know what is deployed, so it's much easier to look at the cade base and reason about the actual infrastructure we have deployed using filesystem-based approach.
+2. One downside is that we do have a little bit more code repetition right instead of just that single `main.tf` we have a `main.tf` in each of our environments.
+
+# 08: Testing Terraform Code
+
+## 8.1 Code Rot
+
+Code Rot in general refers to this concept that over time things change about your software system and if you don't test and use code it will oftentimes degrade over time that could be due to external dependencies changing, due to other changes in your codebase that are impacting your specific function.
+
+### 8.1.1 Types of Rot
+
+* **Out of band changes**: Deploy something with Terraform and then your colleague goes in and changes something via UI, that now a misconfiguration
+* **Unpinned versions**: Forgot to specify version of our provider and it just used latest one, that could cause conflict if that provider was upgraded in the background, 
+* **Deprecated dependencies**: We are depending on an external module or a specific resource type within the cloud provider and that was then deprecated.
+* **Unapplied changes**:  If we have made a change to our infrastructure config (our Terraform config) but never got applied to a specific environment, let's say we rolled it out to staging but we forgot because we didn't automate it and we forgot to apply to production.
+
+> **- How to prevent these types of code rots?** 
+>
+> **+ TESTING YOUR CODE!**
+
+## 8.2 Types of Test
+
+### 8.2.1 Static Checks
+
+#### 8.2.1.1 Built in
+
+* **`terraform fmt`**: Formatting indent and structuring the codebase
+
+  Try `terraform fmt -check` to just see what files are mistaken.
+
+* **`terraform validate`**Check to see are my configurations setting all of the required input variables. Am i passing a boolean to a number variable and etc.
+
+* **`terraform plan`**: Tell us what needs to happen to get from our desired config to an eventual state of those resources being deployed. It can be a great way to check if something has changed out of band.
+
+  If run `terraform plan` and it says:
+
+  *  **"Zero changes is required"**: Means we're good to go, our config has not been modified
+
+  * **"Need to change these four things"**: Means that something happened!
+
+    1. You have changed config.
+    2. If you have not change config, means something happened out of band.
+
+    :warning: Often a good check is to just run a `terraform plan` once a day or once a week 
+
+* **Custom validation rules**: 
+
+  ```terraform
+  variable "short_variable" {
+    type = string
+  
+    validation {
+      condition     = length(var.short_variable) < 4
+      error_message = "The short_variable value must be less than 4 characters!"
+    }
+  }
+  ```
+
+#### 8.2.1.2 External
+
+* `**tflint**`
+* **`checkov`, `ttfsec`, `terrascan`, terraform-compliance, `snyk`**
+* Terraform Sentinal (enterprise only)
+
+### 8.2.2 Manual Testing
+
+Following the similar lifecycle of Terraform commands.
+
+* `terraform init`
+* `terraform plan`
+* `terraform apply`
+* `terraform destroy`
+
+It's great, but we would much prefer for this type of thing to be autoamated.
+
+### 8.2.3 Automated 
+
+#### 8.2.3.1 with **BASH!**
+
+```bash
+#!/bin/bash
+
+set -euo pipefail
+
+# Change directory to project
+cd /path/to/prject
+
+# Create the resources
+terraform init
+terraform apply -auto-approve
+
+# Wait while the instance boots up
+# (Could also use a provisioner in the TF config to do this)
+sleep 60
+
+# query the output, extract the IP and make a request
+terraform output -json |\
+jq -r '.instance_ip_addr.value' |\
+xargs -I {} curl 'http://{}:8080' -m 10
+
+# If request succeeds, destory the resources
+terraform destory -auto-approve
+```
+
+#### 8.2.3.1 with **Terratest**
+
+```go
+package test
+
+import (
+    "crypto/tls"
+    "fmt"
+    "testing"
+    "time"
+
+    "github.com/gruntwork-io/terratest/modules/http-helper"
+    "github.com/gruntwork-io/terratest/modules/terraform"
+)
+
+func TestTerraformHelloWorldExample(t *testing.T) {
+    // retryable errors in terraform testing.
+    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+    	TerraformDir: "../../examples/hello-world",
+     })
+
+    defer terraform.Destroy(t, terraformOptions)
+
+    terraform.InitAndApply(t, terraformOptions)
+
+    instanceURL := terraform.Output(t, terraformOptions, "url")
+    tlsConfig := tls.Config{}
+    maxRetries := 30
+    timeBetweenRetries := 10 * time.Second
+
+    http_helper.HttpGetWithRetryWithCustomValidation(
+    	t, instanceURL, &tlsConfig, maxRetries, timeBetweenRetries, validate,
+    )
+}
+
+func validate(status int, body string) bool {
+        fmt.Println(body)
+        return status == 200
+}
+```
+
+directory tree:
+
+> .
+> ├── go.mod
+> ├── go.sum
+> └── hello_world_test.go
+
+then we run this commands:
+
+```bash
+go mod download
+go test -v --timeout 10m
+```
+
+# 09: Developer Workflow
+
+## 9.1 General Workflow
+
+1. Write/update code
+2. Run changes locally (for development environment)
+3. Create a pull request
+4. Run tests via continues intergration
+5. Deploy to staging via CD (on merge to main)
+6. Deploy to production via CD (on release)
+
+\* **Recommendation**: Having a testing schedule on a cron: periodically running just a `terraform plan`  within your continues integration tool and if that plan shows any changes from the deployed state to the current config on your main branch to raise an error.
+
+ ## 9.2 Multi Account/Project
+
+Different from cloud-to-cloud terminology, it's something like one account for production and one account for staging environments.
+
+* Simplify IAM policies for enforcing controls for different environments (and remote TF backends)
+* Isolate environments to protect minimize blast radius
+* Reduce naming conflicts for resources
+* Con: Adds complexity to TF config (but still worth it + tooling can help)
+
+[Hashicorp - Going Multi-Account with Terraform](https://www.hashicorp.com/resources/going-multi-account-with-terraform-on-aws)
+
+## 9.3 Additional Tools
+
+### 9.3.1 Terragrunt
+
+*  Minimizes code repetition
+* Enables multi-account separation (improved isolation/security)
+
+### 9.3.2 Cloud Nuke
+
+* Easy cleanup of cloud resources
+
+### 9.3.3 Makefiles (or shellscripts)
+
+* Prevent human error
+
+## 9.4 Continues Integration/Continues Deployment
+
+* GitHub Actions
+  * https://github.com/hashicorp/setup-terraform
+* CircleCI
+  * https://circleci.com/developer/orbs/orb/circleci/terraform
+* GitLab
+  * https://docs.gitlab.com/user/infrastructure/iac
+* Atlantis
+  * https://www.runatlantis.io/
+
+## 9.5 Potential Gotchas
+
+These gotchas with Terraform can lead lead you to have a bad day!
+
+* **Name changes when refactoring**:
+
+  If you change the name of a resource within your terraform config it can lead Terraform to think, Oh! they want to delete this resource and create a new one
+
+* **Sensitive data in Terraform state files**:
+
+  The Terraform state file do have sensitive data within them, so be careful in making sure to encrypt and manage permissions.
+
+* **Cloud timeouts**:
+
+  You can issue a command and sometimes that command will take a long time for the server to provision or for the database to be provisioned and etc, and if there are things that take a long time behind the scenes, Terraform sometimes has timeouts, where it will provision half of your infrastructure and then the other things was taking too long and it gives up, so you can configure those timeouts, but something to think about; usually if you just reissue the `terraform apply` command it will fix that, but it they can be a little challenging.
+
+* **Naming conflicts**:
+
+  If you provisioning two things(two resources) within the same AWS account, second one will fail to create.
+
+* **Forgetting to destroy test-infra**:
+
+  Use Cloud Nuke tool or write some ShellScript.
+
+* **Uni-directional version upgrades**:
+
+  If I run Terraform version 1.0.0 to provision my infrastructure and then my colleague runs Terraform 1.1.0, I can now no longer issue a command with my older version of Terraform, because the state file is associated with the version of Terraform binary that was used with it. So I would then need to upgrade and so if you have a larger team you want to make sure everyone is using the same version of Terraform on their local system as well as matching the version in you CI/CD system.
+
+* **Multiple ways to accomplish same configuration**: 
+
+  That's not necessarily a con but it's just as you're thinking about things, there is always multiple ways to do it. What would be the cleanest representation of this infrastructure is important to think about.
+
+* **Some params are immutable**:
+
+  If I provision some specific resource, there are certain fields within that resource that I could change and there are certain fields that I can not. If I need to make a change associated with one of those immutable parameters, I will need to delete the previous resource and provision a new one and so that's another consideration in terms of thinking about downtime.
+
+* **Out of band changes**:
+
+  Making changes out of the normal Terraform sequence of events.
+
+  That is something that you just want to avoid whenever possible.
+
+  
+
+
+
