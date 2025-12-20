@@ -2,8 +2,6 @@
 
 [TOC]
 
-
-
 # What is Terraform?
 
 Terraform is a tool for building, changing, and versioning infrastructure safely and efficiently.
@@ -2270,7 +2268,124 @@ These gotchas with Terraform can lead lead you to have a bad day!
 
   That is something that you just want to avoid whenever possible.
 
+
+## 9.6 Example
+
+We are creating an automation with GitHub Actions.
+
+In `.github/workflows/terraform.yml`:
+
+```yaml
+name: "Terraform"
+
+on:
+  push:
+    branches:
+      - main
+    release:
+      types: [published]
+    pull_requests:
+    
+jobs:
+  terraform:
+    name: "Terraform"
+    runs-on: ubuntu-latest
+    env:
+       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    defaults:
+      run:
+        working-directory: 07-managingj-multiple-environments/file-structure/staging
+    steps:
+      - name: Checkout
+        uses: action/checkout@v2
+        
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.1
+          terraform_wrapper: false
+      
+      - name: Terraform Format
+        id: fmt
+        run: terraform fmt -check
+        
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        
+      - name: Terraform Plan
+        id: plan
+        if: github.event_name == 'pull_request'
+        # Route 53 zone must already exist for this to succeed!
+        run: terraform plan -var db_pass=${{ secrets.DB_PASS }} -no-color
+        continue-on-error: true
+        
+      - uses: actions/github-script@0.9.0
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌 \`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization  \`${{ steps.init.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`${process.env.PLAN}\`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
   
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.5'
 
+      - name : Terratest Execution
+        if: github.event_name == 'pull_request'
+        working-directory: 08-testing/tests/terratest
+        run: |
+          go test . -v timeout 10m
 
+      - name: Check tag
+        id: check-tag
+        run: |
+          if [[ ${{ github.ref }} =~ ^refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then echo ::set-output name=environment::production
+          elif [[ ${{ github.ref }} == 'refs/heads/main' ]]; then echo ::set-output name=environment::staging
+          else echo ::set-output name=environment::unknown
+          fi
+
+      - name: Terraform Apply Global
+        if: github.event_name == 'push' || github.event_name == 'release'
+        working-directory: 07-managing-multiple-environments/file-structure/global
+        run: |
+          terraform init
+          terraform apply -auto-approve
+          
+      - name: Terraform Apply Staging
+        if: steps.check-tag.outputs.environment == 'staging' && github.event_name == 'push'
+        run: terraform apply -var db_pass=${{secrets.DB_PASS }} -auto-approve
+
+      - name: Terraform Apply Production
+        if: steps.check-tag.outputs.environment == 'production' && github.event_name == 'release'
+        working-directory: 07-managing-multiple-environments/file-structure/production
+        run: |
+          terraform init
+          terraform apply -var db_pass=${{secrets.DB_PASS }} -auto-approve
+        
+```
 
