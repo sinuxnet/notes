@@ -27,9 +27,9 @@ We can make our previous code much more modular by using variables and outputs w
 
 ```terraform
 variable "instance_type" {
-    description	= "ec2 instance type"
+    description = "ec2 instance type"
     type        = string
-    default	    = "t2.micro"
+    default     = "t2.micro"
     }
 
 locals {
@@ -98,11 +98,11 @@ output "instance_ip_addr" {
 ```terraform
 terraform {
     backend "s3" {
-        bucket		    = "devops-directive-tf-state"
-        key		  	    = "04-variable-and-outputs/example/terraform.tfstate"
-        region			= "us-east-1"
-        dynamodb-table	 = "terraform-state-locking"
-        encrypt			= true
+        bucket          = "devops-directive-tf-state"
+        key             = "04-variable-and-outputs/example/terraform.tfstate"
+        region          = "us-east-1"
+        dynamodb-table  = "terraform-state-locking"
+        encrypt         = true
         }
     required_providers {
         aws = {
@@ -209,7 +209,7 @@ output "db_instance_addr" {
 **And Finally:**
 
 ```shell
-$ terraform apply -var="db_user=myuser" -var="db_pass=SOMETHING_SUPER_SECURE"
+terraform apply -var="db_user=myuser" -var="db_pass=SOMETHING_SUPER_SECURE"
 ```
 
 The sensitive values can be stored in something like GitHub secrets, AWS Secret Manager and accessed within GitHub Actions, etc.

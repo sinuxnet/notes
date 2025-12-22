@@ -309,7 +309,7 @@ Visit: https://app.terraform.io
 terraform {
     backend "s3" {
         bucket          = "devops-directive-tf-state"
-        key			   = "tf-infra/terraform.tfstate"
+        key             = "tf-infra/terraform.tfstate"
         region          = "us-east-1"
         dynamodb_table  = "terraform-state-locking"
         encrypt         = true
@@ -357,9 +357,9 @@ We can make our previous code much more modular by using variables and outputs w
 
 ```terraform
 variable "instance_type" {
-    description	= "ec2 instance type"
+    description = "ec2 instance type"
     type        = string
-    default	    = "t2.micro"
+    default     = "t2.micro"
     }
 
 locals {
@@ -428,11 +428,11 @@ output "instance_ip_addr" {
 ```terraform
 terraform {
     backend "s3" {
-        bucket		    = "devops-directive-tf-state"
-        key		  	    = "04-variable-and-outputs/example/terraform.tfstate"
-        region			= "us-east-1"
-        dynamodb-table	 = "terraform-state-locking"
-        encrypt			= true
+        bucket          = "devops-directive-tf-state"
+        key             = "04-variable-and-outputs/example/terraform.tfstate"
+        region          = "us-east-1"
+        dynamodb-table  = "terraform-state-locking"
+        encrypt         = true
         }
     required_providers {
         aws = {
@@ -1075,7 +1075,7 @@ resource "aws_instance" "server" {
 
 # 5.3 Provisioners
 
-**Perform action on local or remote machine**
+## Perform action on local or remote machine
 
 Provisioners allow you to perform some action either locally or on a remote machine. There are a number of different types of provisioners:
 
@@ -1113,7 +1113,7 @@ Default module containing all `.tf` files in main working directory
 
 A separate external module referred to from a `.tf` file.
 
-## 6.4 Module Sources:
+## 6.4 Module Sources
 
 - Local paths
 - Terraform Registry
@@ -1150,7 +1150,7 @@ module "" {
 ```terraform
 # HTTPS
 module "example" {
-    source ="github.com/hashicorp/example?ref=v1.3.1" # can refrence specific version
+    source ="github.com/hashicorp/example?ref=v1.3.1" # can reference specific version
     }
 
 module "example" {
@@ -1202,7 +1202,7 @@ module "web-app" {
 
 You can use Terraform Registry as starting point.
 
-<img src="./images/terraform_registry.png" style="zoom:60%;" />
+<img src="./images/terraform_registry.png" alt="Terraform Registry" style="zoom:60%;" />
 
 ## 6.8 Consuming a 3rd-party Module
 
@@ -1248,7 +1248,6 @@ After that you must run `terraform init` and then `terraform plan` then you will
 > .
 > ├── web-app
 > ├── web-app-module
-
 > web-app/main.tf
 
 ```terraform
@@ -1330,7 +1329,6 @@ module "web_app_2" {
 > └── variables.tf
 >
 > 1 directory, 8 files
-
 > main.tf
 
 ```terraform
@@ -1646,7 +1644,7 @@ Hopefully that gives you an idea of how we can break up our Terraform code into 
 
 # 07: Managing Multiple Environments
 
-<img src="./images/multiple_environments.png" style="zoom:60%;" />
+<img src="./images/multiple_environments.png" alt="Multiple Environments" style="zoom:60%;" />
 
 We want to take our single config or module and deploy it multiple times and there are two main approaches:
 
@@ -1696,14 +1694,14 @@ $ tree
 |       ├── main.tf
 |       └── variables.tf
 ├── dev
-|	├── main.tf
-|	└── terraform.tfvars
+│   ├── main.tf
+│   └── terraform.tfvars
 ├── production
-|	├── main.tf
-|	└── terraform.tfvars
+│   ├── main.tf
+│   └── terraform.tfvars
 └── staging
-	├── main.tf
-	└── terraform.tfvars
+    ├── main.tf
+    └── terraform.tfvars
 
 6 directories, 10 files
 
@@ -1750,7 +1748,7 @@ $ tree
     ├── compute
     |   ├── main.tf
     |   └── terraform.tfvars
-    ├── networking
+    └── networking
         ├── main.tf
         └── terraform.tfvars
 
@@ -1852,7 +1850,6 @@ terraform destroy
 > │ └── main.tf
 > └── staging
 > └── main.tf
-
 > global/main.tf
 
 ```terraform
@@ -1990,7 +1987,7 @@ commands to run:
 
 ```bash
 terraform init
-terraform apply	# provisioning shared resources
+terraform apply # provisioning shared resources
 cd production
 terraform init
 terraform apply
@@ -2123,7 +2120,7 @@ import (
 func TestTerraformHelloWorldExample(t *testing.T) {
     // retryable errors in terraform testing.
     terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-    	TerraformDir: "../../examples/hello-world",
+        TerraformDir: "../../examples/hello-world",
      })
 
     defer terraform.Destroy(t, terraformOptions)
@@ -2136,7 +2133,7 @@ func TestTerraformHelloWorldExample(t *testing.T) {
     timeBetweenRetries := 10 * time.Second
 
     http_helper.HttpGetWithRetryWithCustomValidation(
-    	t, instanceURL, &tlsConfig, maxRetries, timeBetweenRetries, validate,
+        t, instanceURL, &tlsConfig, maxRetries, timeBetweenRetries, validate,
     )
 }
 

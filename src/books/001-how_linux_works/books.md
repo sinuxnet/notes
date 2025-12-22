@@ -4,13 +4,13 @@
 
 - **Description:** If you want to know more about Linux history.
 
-- **Author(s):**  Peter H. Salus
+- **Author(s):** Peter H. Salus
 
 ## 2. Operating System Concepts
 
 - **Description:** If you are interested in the detailed of a kernel.
 
-- **Author(s):** Abraham Silberschatz , Peter B. Galvin & Greg Gagne 
+- **Author(s):** Abraham Silberschatz , Peter B. Galvin & Greg Gagne
 
 - **Edition:** 10th
 
@@ -18,7 +18,7 @@
 
 - **Year:** 2018
 
-## 3.  Modern Operating systems
+## 3. Modern Operating systems
 
 - **Description:** If you are interested in the detailed of a kernel.
 

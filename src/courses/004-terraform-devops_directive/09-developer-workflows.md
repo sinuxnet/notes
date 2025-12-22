@@ -210,4 +210,3 @@ jobs:
           terraform init
           terraform apply -var db_pass=${{secrets.DB_PASS }} -auto-approve
 ```
-

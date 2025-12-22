@@ -2,7 +2,7 @@
 
 # 07: Managing Multiple Environments
 
-<img src="./images/multiple_environments.png" style="zoom:60%;" />
+<img src="./images/multiple_environments.png" alt="Multiple Environments" style="zoom:60%;" />
 
 We want to take our single config or module and deploy it multiple times and there are two main approaches:
 
@@ -52,14 +52,14 @@ $ tree
 |       ├── main.tf
 |       └── variables.tf
 ├── dev
-|	├── main.tf
-|	└── terraform.tfvars
+│   ├── main.tf
+│   └── terraform.tfvars
 ├── production
-|	├── main.tf
-|	└── terraform.tfvars
+│   ├── main.tf
+│   └── terraform.tfvars
 └── staging
-	├── main.tf
-	└── terraform.tfvars
+    ├── main.tf
+    └── terraform.tfvars
 
 6 directories, 10 files
 
@@ -106,7 +106,7 @@ $ tree
     ├── compute
     |   ├── main.tf
     |   └── terraform.tfvars
-    ├── networking
+    └── networking
         ├── main.tf
         └── terraform.tfvars
 
@@ -208,7 +208,6 @@ terraform destroy
 > │ └── main.tf
 > └── staging
 > └── main.tf
-
 > global/main.tf
 
 ```terraform
@@ -346,7 +345,7 @@ commands to run:
 
 ```bash
 terraform init
-terraform apply	# provisioning shared resources
+terraform apply # provisioning shared resources
 cd production
 terraform init
 terraform apply

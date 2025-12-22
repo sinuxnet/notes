@@ -232,7 +232,7 @@ resource "aws_instance" "server" {
 
 # 5.3 Provisioners
 
-**Perform action on local or remote machine**
+## Perform action on local or remote machine
 
 Provisioners allow you to perform some action either locally or on a remote machine. There are a number of different types of provisioners:
 
