@@ -1,0 +1,21 @@
+name: Spell Check
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  spellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Spell Check
+        uses: streetsidesoftware/cspell-action@v8
+        with:
+          files: "**/*.md"
+          config: "cspell.json"
+          inline: "error"
+

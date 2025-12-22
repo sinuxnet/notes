@@ -1,0 +1,19 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "words": [
+        "terraform",
+        "kubernetes",
+        "ansible",
+        "packer",
+        "devops",
+        "iac",
+        "sinuxnet"
+    ],
+    "ignoreWords": [],
+    "ignorePaths": [
+        "node_modules/**",
+        "package-lock.json",
+        "yarn.lock"
+    ]
+}
