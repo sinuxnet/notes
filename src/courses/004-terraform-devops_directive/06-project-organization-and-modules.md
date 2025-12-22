@@ -22,7 +22,7 @@ Default module containing all `.tf` files in main working directory
 
 A separate external module referred to from a `.tf` file.
 
-## 6.4 Module Sources:
+## 6.4 Module Sources
 
 - Local paths
 - Terraform Registry
@@ -111,7 +111,7 @@ module "web-app" {
 
 You can use Terraform Registry as starting point.
 
-<img src="./images/terraform_registry.png" style="zoom:60%;" />
+<img src="./images/terraform_registry.png" alt="Terraform Registry" style="zoom:60%;" />
 
 ## 6.8 Consuming a 3rd-party Module
 
@@ -157,7 +157,6 @@ After that you must run `terraform init` and then `terraform plan` then you will
 > .
 > ├── web-app
 > ├── web-app-module
-
 > web-app/main.tf
 
 ```terraform

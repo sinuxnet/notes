@@ -4,7 +4,7 @@ A personal repository for organizing notes from courses, videos, and books.
 
 ## Structure
 
-```
+```text
 src/
 ├── books/          # Notes from books
 └── courses/        # Notes from courses and video tutorials

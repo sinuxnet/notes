@@ -13,6 +13,5 @@ Use this file to hold all notes related to:
 - 9.5 Potential Gotchas  
 - 9.6 Example (GitHub Actions workflow)
 
-You can cut the corresponding sections out of `What is Terraform.md` and paste them here when you’re ready.
-
+You can cut the corresponding sections out of `What is Terraform.md` and paste them here when you're ready.
 
