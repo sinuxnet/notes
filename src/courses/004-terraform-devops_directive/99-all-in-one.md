@@ -309,7 +309,7 @@ Visit: https://app.terraform.io
 terraform {
     backend "s3" {
         bucket          = "devops-directive-tf-state"
-        key			   = "tf-infra/terraform.tfstate"
+        key             = "tf-infra/terraform.tfstate"
         region          = "us-east-1"
         dynamodb_table  = "terraform-state-locking"
         encrypt         = true
@@ -357,9 +357,9 @@ We can make our previous code much more modular by using variables and outputs w
 
 ```terraform
 variable "instance_type" {
-    description	= "ec2 instance type"
+    description = "ec2 instance type"
     type        = string
-    default	    = "t2.micro"
+    default     = "t2.micro"
     }
 
 locals {
@@ -428,11 +428,11 @@ output "instance_ip_addr" {
 ```terraform
 terraform {
     backend "s3" {
-        bucket		    = "devops-directive-tf-state"
-        key		  	    = "04-variable-and-outputs/example/terraform.tfstate"
-        region			= "us-east-1"
-        dynamodb-table	 = "terraform-state-locking"
-        encrypt			= true
+        bucket          = "devops-directive-tf-state"
+        key             = "04-variable-and-outputs/example/terraform.tfstate"
+        region          = "us-east-1"
+        dynamodb-table  = "terraform-state-locking"
+        encrypt         = true
         }
     required_providers {
         aws = {
@@ -1075,7 +1075,7 @@ resource "aws_instance" "server" {
 
 # 5.3 Provisioners
 
-### Perform action on local or remote machine
+## Perform action on local or remote machine
 
 Provisioners allow you to perform some action either locally or on a remote machine. There are a number of different types of provisioners:
 
@@ -1150,7 +1150,7 @@ module "" {
 ```terraform
 # HTTPS
 module "example" {
-    source ="github.com/hashicorp/example?ref=v1.3.1" # can refrence specific version
+    source ="github.com/hashicorp/example?ref=v1.3.1" # can reference specific version
     }
 
 module "example" {
@@ -1329,7 +1329,6 @@ module "web_app_2" {
 > └── variables.tf
 >
 > 1 directory, 8 files
-
 > main.tf
 
 ```terraform
@@ -2134,7 +2133,7 @@ func TestTerraformHelloWorldExample(t *testing.T) {
     timeBetweenRetries := 10 * time.Second
 
     http_helper.HttpGetWithRetryWithCustomValidation(
-    	t, instanceURL, &tlsConfig, maxRetries, timeBetweenRetries, validate,
+        t, instanceURL, &tlsConfig, maxRetries, timeBetweenRetries, validate,
     )
 }
 

@@ -59,7 +59,7 @@ module "" {
 ```terraform
 # HTTPS
 module "example" {
-    source ="github.com/hashicorp/example?ref=v1.3.1" # can refrence specific version
+    source ="github.com/hashicorp/example?ref=v1.3.1" # can reference specific version
     }
 
 module "example" {
@@ -238,7 +238,6 @@ module "web_app_2" {
 > └── variables.tf
 >
 > 1 directory, 8 files
-
 > main.tf
 
 ```terraform

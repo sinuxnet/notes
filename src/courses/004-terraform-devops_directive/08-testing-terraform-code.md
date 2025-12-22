@@ -132,7 +132,7 @@ func TestTerraformHelloWorldExample(t *testing.T) {
     timeBetweenRetries := 10 * time.Second
 
     http_helper.HttpGetWithRetryWithCustomValidation(
-    	t, instanceURL, &tlsConfig, maxRetries, timeBetweenRetries, validate,
+        t, instanceURL, &tlsConfig, maxRetries, timeBetweenRetries, validate,
     )
 }
 
