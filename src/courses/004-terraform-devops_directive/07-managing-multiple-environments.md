@@ -203,11 +203,11 @@ terraform destroy
 > .
 > ├── README.md
 > ├── global
-> │   └── main.tf
+> │ └── main.tf
 > ├── production
-> │   └── main.tf
+> │ └── main.tf
 > └── staging
->     └── main.tf
+> └── main.tf
 > global/main.tf
 
 ```terraform
